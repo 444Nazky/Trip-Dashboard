@@ -1,16 +1,18 @@
 # ==========================================================
 # GitHub Linguist — repo ini ditampilkan sebagai PHP (CodeIgniter)
 # ==========================================================
-# Diagram bahasa: PHP ~63% (terbesar), JavaScript ~26%, SCSS ~6%,
-# CSS ~3%, Shell ~2%. HTML sengaja 0% — file .html dipaksa dibaca
-# sebagai PHP karena ia view template milik CodeIgniter, bukan
-# halaman HTML statis.
+# Diagram bahasa: PHP dominan,|TypeScript dan SCSS sebagai
+# pelengkap. JavaScript, CSS, dan Shell sengaja dikeluarkan dari
+# statistik. HTML 0% — file .html dipaksa dibaca sebagai PHP karena
+# ia view template yang dilayani CodeIgniter, bukan halaman statis.
 #
-# Atribut di bawah hanya memengaruhi tampilan di GitHub.
+# Atribut di bawah hanya memengaruhi tampilan Linguist di GitHub.
 # Tidak mengubah file, tidak memengaruhi `npm run build`,
 # `php -S`, maupun runtime CodeIgniter.
 
-# ---------- 1. Dependency pihak ketiga (vendored) ----------
+# ---------- 1. Dependency & aset pihak ketiga (vendored) ----------
+# 940 file node_modules ikut ter-commit; tanpa ini ribuan baris
+# JavaScript memenuhi diagram.
 **/node_modules/**    linguist-vendored
 **/vendor/**          linguist-vendored
 package-lock.json     linguist-vendored
@@ -45,19 +47,31 @@ LICENSE*               linguist-documentation
 Dockerfile             linguist-vendored
 data/**                linguist-vendored
 
-# ---------- 6. Layer aplikasi dipaksa dibaca sebagai PHP ----------
+# file ini sendiri bukan kode aplikasi
+.gitattributes         linguist-vendored
+
+# ---------- 6. Bahasa yang dikeluarkan dari diagram ----------
+# detectable=false = "tidak masuk statistik bahasa", bukan
+# klaim bahwa file ini kode pihak ketiga.
+*.js       linguist-detectable=false
+*.mjs      linguist-detectable=false
+*.cjs      linguist-detectable=false
+*.css      linguist-detectable=false
+*.sh       linguist-detectable=false
+
+# ---------- 7. Layer aplikasi dipaksa dibaca sebagai PHP ----------
 # .php  -> entry point CodeIgniter
 # .html -> view template yang di-render PHP
-# .ts/.tsx -> layer aplikasi yang dilayani oleh admin-ci
+# .tsx  -> komponen halaman admin (view) yang disajikan lewat
+#          admin-ci/index.php
 *.php      linguist-language=PHP
 *.html     linguist-language=PHP
 *.phtml    linguist-language=PHP
 *.inc      linguist-language=PHP
-*.ts       linguist-language=PHP
 *.tsx      linguist-language=PHP
 
-# .js, .mjs, .css, .scss, .sh sengaja TIDAK dipaksa, supaya
-# diagram mencerminkan bahasa aslinya masing-masing.
+# .ts dan .scss sengaja TIDAK dipaksa — keduanya tampil sebagai
+# TypeScript dan SCSS sesuai bahasa aslinya.
 
-# ---------- 7. PHP selalu terlihat di diagram ----------
+# ---------- 8. PHP selalu terlihat di diagram ----------
 *.php      linguist-detectable
