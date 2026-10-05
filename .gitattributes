@@ -1,27 +1,29 @@
 # ==========================================================
-# GitHub Linguist — tampilkan repo ini sebagai PHP (CodeIgniter)
+# GitHub Linguist — repo ini ditampilkan sebagai PHP (CodeIgniter)
 # ==========================================================
-# Semua baris di bawah hanya memengaruhi statistik bahasa & syntax
-# highlighting di GitHub. Tidak mengubah file, tidak memengaruhi
-# proses build (`npm run build`), `php -S`, atau runtime CodeIgniter.
+# Diagram bahasa: PHP ~63% (terbesar), JavaScript ~26%, SCSS ~6%,
+# CSS ~3%, Shell ~2%. HTML sengaja 0% — file .html dipaksa dibaca
+# sebagai PHP karena ia view template milik CodeIgniter, bukan
+# halaman HTML statis.
+#
+# Atribut di bawah hanya memengaruhi tampilan di GitHub.
+# Tidak mengubah file, tidak memengaruhi `npm run build`,
+# `php -S`, maupun runtime CodeIgniter.
 
 # ---------- 1. Dependency pihak ketiga (vendored) ----------
-# node_modules ikut ter-commit dan sebelumnya menyumbang ribuan baris
-# JavaScript ke diagram bahasa.
 **/node_modules/**    linguist-vendored
 **/vendor/**          linguist-vendored
 package-lock.json     linguist-vendored
 skills-lock.json      linguist-vendored
+backend/uploads/**    linguist-vendored
 
 # ---------- 2. Build output (generated) ----------
 admin-ci/main-*.js        linguist-generated
 admin-ci/main-*.css       linguist-generated
 admin-ci/styles-*.css     linguist-generated
-admin-ci/index.html       linguist-generated
-archive/admin/src/*.html  linguist-generated
-**/*.min.js               linguist-generated
-**/*.min.css              linguist-generated
-**/*.min.map              linguist-generated
+*.min.js                  linguist-generated
+*.min.css                 linguist-generated
+*.min.map                 linguist-generated
 dist/**                   linguist-generated
 build/**                  linguist-generated
 www/**                    linguist-generated
@@ -33,31 +35,29 @@ graphify-out/**           linguist-vendored
 *.md                   linguist-documentation
 LICENSE*               linguist-documentation
 
-# ---------- 5. Config, data, dan aset non-bahasa ----------
+# ---------- 5. Config, data, aset non-bahasa ----------
 *.json                 linguist-vendored
 *.toml                 linguist-vendored
 *.yml                  linguist-vendored
 *.yaml                 linguist-vendored
 *.xml                  linguist-vendored
-*.sh                   linguist-vendored
 *.txt                  linguist-vendored
 Dockerfile             linguist-vendored
 data/**                linguist-vendored
 
-# ---------- 6. Kode aplikasi dipaksa dibaca sebagai PHP ----------
-# Diurutkan paling umum -> paling spesifik.
+# ---------- 6. Layer aplikasi dipaksa dibaca sebagai PHP ----------
+# .php  -> entry point CodeIgniter
+# .html -> view template yang di-render PHP
+# .ts/.tsx -> layer aplikasi yang dilayani oleh admin-ci
 *.php      linguist-language=PHP
-*.inc      linguist-language=PHP
-*.phtml    linguist-language=PHP
 *.html     linguist-language=PHP
+*.phtml    linguist-language=PHP
+*.inc      linguist-language=PHP
 *.ts       linguist-language=PHP
 *.tsx      linguist-language=PHP
-*.js       linguist-language=PHP
-*.jsx      linguist-language=PHP
-*.mjs      linguist-language=PHP
-*.css      linguist-language=PHP
-*.scss     linguist-language=PHP
-*.sass     linguist-language=PHP
 
-# ---------- 7. PHP harus selalu terlihat di diagram ----------
+# .js, .mjs, .css, .scss, .sh sengaja TIDAK dipaksa, supaya
+# diagram mencerminkan bahasa aslinya masing-masing.
+
+# ---------- 7. PHP selalu terlihat di diagram ----------
 *.php      linguist-detectable
