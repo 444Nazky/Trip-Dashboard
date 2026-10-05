@@ -1,15 +1,32 @@
 <?php
-// Trip Angkutan Admin Dashboard - CodeIgniter 2.2.4 Style
+// Trip Angkutan Admin Dashboard - Session-Gated Entry Point
 
-$api_base = "http://localhost:3000/api";
-$admin_token = isset($_COOKIE['admin_token']) ? $_COOKIE['admin_token'] : null;
-$page = isset($_GET['page']) ? $_GET['page'] : 'dashboard';
-
-if ($page === 'logout') {
-    setcookie('admin_token', '', time() - 3600);
-    header('Location: index.php');
+// --- Authentication Gate ---
+session_start();
+if (empty($_SESSION['admin_logged_in'])) {
+    header('Location: login.php');
     exit;
 }
+
+// --- Guard: re-verify token still resolves ---
+$api_base = 'http://localhost:3000/api';
+$admin_token = $_SESSION['admin_token'] ?? null;
+if (!$admin_token) {
+    header('Location: login.php');
+    exit;
+}
+$page = $_GET['page'] ?? 'dashboard';
+
+// --- Logout ---
+if ($page === 'logout') {
+    $_SESSION = [];
+    session_destroy();
+    setcookie(session_name(), '', time() - 4200, '/');
+    header('Location: login.php');
+    exit;
+}
+
+// --- Fetch Protected Dashboard Data ---
 
 function api_call($endpoint, $method = 'GET', $data = null, $token = null) {
     global $api_base;
