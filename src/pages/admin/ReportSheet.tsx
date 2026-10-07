@@ -5,6 +5,7 @@ import {
   fetchTripReports,
   fetchReportFilters,
   formatReportDateTime,
+  vehicleUnitLabel,
   type ReportTrip,
   type ReportFilters,
   type ReportFilterOptions,
@@ -29,7 +30,7 @@ const fmtCoords = (lat?: number | null, lng?: number | null) => {
   return { lat: Number(lat).toFixed(5), lng: Number(lng).toFixed(5), gmaps: `https://www.google.com/maps?q=${lat},${lng}` }
 }
 
-const ThumbnailCell = ({ foto_path, no_trip }: { foto_path: string | null | undefined; no_trip: string }) => {
+const ThumbnailCell = ({ foto_path, no_trip, label }: { foto_path: string | null | undefined; no_trip: string; label?: string }) => {
   const url = fotoUrl(foto_path)
   const [open, setOpen] = useState(false)
   if (!url) return <span className="text-slate-300 italic text-[11px]">-</span>
@@ -55,14 +56,16 @@ const ThumbnailCell = ({ foto_path, no_trip }: { foto_path: string | null | unde
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setOpen(false)}>
           <div className="relative max-w-2xl w-full bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-2 bg-slate-800 text-white text-xs font-semibold">
-              <span className="flex items-center gap-2"><ImageIcon size={13} /> Dokumentasi Kendaraan</span>
+              <span className="flex items-center gap-2">
+                <ImageIcon size={13} /> Dokumentasi {label ? `· ${label}` : 'Kendaraan'}
+              </span>
               <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded"><X size={14} /></button>
             </div>
             <div className="bg-slate-900 p-2 flex items-center justify-center">
               <img src={url} alt="kendaraan" className="max-h-[65vh] w-auto object-contain rounded-lg" />
             </div>
             <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-mono">Trip: {no_trip}</span>
+              <span className="font-mono">Trip: {no_trip}{label ? ` · ${label}` : ''}</span>
               <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline flex items-center gap-1">
                 <ExternalLink size={11} /> Buka Asli
               </a>
@@ -79,15 +82,21 @@ type LoadState = 'loading' | 'ready' | 'offline'
 
 const AUTO_REFRESH_MS = 15_000
 
-/** Baris kendaraan: 0-8 = primitif, 9 = foto (string|null), 10 = koordinat ({gmaps}|null) */
+/**
+ * Baris kendaraan (SEJAJAR dengan vehHeader 13 kolom):
+ * 0 = '#', 1 = No Trip, 2 = Tanggal, 3 = Jam, 4 = Tempat, 5 = No. Polisi,
+ * 6 = Unit (label per jenis: "Truk 1", "Mobil 1"), 7 = Jenis, 8 = Golongan,
+ * 9 = Kategori, 10 = Tarif, 11 = foto (string|null), 12 = koordinat ({gmaps}|null)
+ */
 interface VehRow extends Array<string | number | { lat: string; lng: string; gmaps: string } | null> {
-  0: string; 1: string; 2: string; 3: string; 4: string; 5: string;
-  6: string; 7: string; 8: number; 9: string | null;
-  10: { lat: string; lng: string; gmaps: string } | null;
-  length: 11;
+  0: number; 1: string; 2: string; 3: string; 4: string; 5: string;
+  6: string; 7: string; 8: string; 9: string; 10: number;
+  11: string | null;
+  12: { lat: string; lng: string; gmaps: string } | null;
+  length: 13;
 }
 
-const asVehRow = (r: [string, string, string, string, string, string, string, string, number, string | null, { lat: string; lng: string; gmaps: string } | null]): VehRow => r as unknown as VehRow
+const asVehRow = (r: [number, string, string, string, string, string, string, string, string, string, number, string | null, { lat: string; lng: string; gmaps: string } | null]): VehRow => r as unknown as VehRow
 
 export default function ReportSheet() {
   const [rows, setRows] = useState<ReportTrip[]>([])
@@ -129,7 +138,7 @@ export default function ReportSheet() {
   const tujuan = (t: ReportTrip) => (t.route_to_name ? `${t.route_to_name} (${t.route_to})` : t.route_to || '-')
 
   const tripHeader = ['#', 'No Trip', 'Tanggal', 'Jam (WIB)', 'Tempat / Wilayah', 'Rute Asal', 'Rute Tujuan', 'Petugas', 'Muatan', 'Unit', 'Pendapatan (Rp)']
-  const vehHeader = ['#', 'No Trip', 'Tanggal', 'Jam (WIB)', 'Tempat / Wilayah', 'No. Polisi', 'Jenis Kendaraan', 'Golongan', 'Kategori', 'Tarif (Rp)', 'Foto', 'Lokasi']
+  const vehHeader = ['#', 'No Trip', 'Tanggal', 'Jam (WIB)', 'Tempat / Wilayah', 'No. Polisi', 'Unit', 'Jenis Kendaraan', 'Golongan', 'Kategori', 'Tarif (Rp)', 'Foto', 'Lokasi']
 
   const tripMatrix = useMemo(() => rows.map((t, i) => {
     const d = formatReportDateTime(t.created_at)
@@ -138,20 +147,20 @@ export default function ReportSheet() {
       t.vehicle_count || 0, t.trip_revenue || 0]
   }), [rows])
 
-  const vehMatrix = useMemo(() => rows.flatMap(t => {
+  const vehFlat = useMemo(() => rows.flatMap(t => t.vehicles.map(v => ({ t, v }))), [rows])
+  const vehMatrix = useMemo(() => vehFlat.map(({ t, v }, i) => {
     const d = formatReportDateTime(t.created_at)
-    return t.vehicles.map(v => {
-      const coords = fmtCoords(v.latitude, v.longitude)
-      return asVehRow([t.no_trip, d.date, d.time, place(t), v.no_polisi, v.vehicle_type,
-        v.master_golongan || (v.golongan.length <= 3 ? v.golongan : '-'), v.golongan, v.tariff_amount || 0,
-        v.foto_path, coords])
-    })
-  }), [rows])
+    const coords = fmtCoords(v.latitude, v.longitude)
+    return asVehRow([i + 1, t.no_trip, d.date, d.time, place(t), v.no_polisi,
+      vehicleUnitLabel(t.vehicles, v), v.vehicle_type,
+      v.master_golongan || (v.golongan.length <= 3 ? v.golongan : '-'), v.golongan, v.tariff_amount || 0,
+      v.foto_path, coords])
+  }), [vehFlat])
 
   const totalTrip = rows.length
   const totalUnit = rows.reduce((s, t) => s + (t.vehicle_count || 0), 0)
   const totalRevenue = rows.reduce((s, t) => s + (t.trip_revenue || 0), 0)
-  const totalTarif = vehMatrix.reduce((s, r) => s + Number((r[8] as number) || 0), 0)
+  const totalTarif = vehMatrix.reduce((s, r) => s + Number((r[10] as number) || 0), 0)
 
   const header = view === 'trip' ? tripHeader : vehHeader
   const matrix = view === 'trip' ? tripMatrix : vehMatrix
@@ -160,9 +169,9 @@ export default function ReportSheet() {
     const now = new Date()
     // Excel matrix — hanya string | number | null untuk XlsxSheet.rows
     const vehExcelMatrix: (string | number | null)[][] = vehMatrix.map(r => [
-      r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8],
-      fotoUrl(r[9]) || null,
-      r[10] ? r[10].gmaps : null,
+      r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10],
+      fotoUrl(r[11]) || null,
+      r[12] ? r[12].gmaps : null,
     ])
     const meta: (string | number | null)[][] = [
       ['Laporan Spreadsheet'],
@@ -176,15 +185,15 @@ export default function ReportSheet() {
     ]
     return [
       { name: 'Laporan Trip', rows: [...meta, tripHeader, ...tripMatrix, [], ['TOTAL', '', '', '', '', '', '', '', '', totalUnit, totalRevenue]] },
-      { name: 'Detail Kendaraan', rows: [['Detail Kendaraan per Trip'], [], vehHeader, ...vehExcelMatrix, [], ['TOTAL', '', '', '', '', '', '', '', '', '', '', totalTarif]] },
+      { name: 'Detail Kendaraan', rows: [['Detail Kendaraan per Trip'], [], vehHeader, ...vehExcelMatrix, [], ['TOTAL', '', '', '', '', '', '', '', '', '', totalTarif, '', '']] },
     ]
   }
 
   const copyTsv = async () => {
     // TSV matrix — flatten kolom kompleks (Foto=objek, Lokasi=objek) ke string
     const tsvRows = matrix.map(r => r.map((cell, ci) => {
-      if (view === 'vehicle' && ci === 9) return fotoUrl(cell as string | null) || '-'
-      if (view === 'vehicle' && ci === 10) return ((cell as { lat: string; lng: string; gmaps: string } | null)?.gmaps) || '-'
+      if (view === 'vehicle' && ci === 11) return fotoUrl(cell as string | null) || '-'
+      if (view === 'vehicle' && ci === 12) return ((cell as { lat: string; lng: string; gmaps: string } | null)?.gmaps) || '-'
       return String(cell ?? '')
     }))
     const tsv = [
@@ -192,7 +201,7 @@ export default function ReportSheet() {
       ...tsvRows.map(r => r.join('\t')),
       view === 'trip'
         ? ['', 'TOTAL', '', '', '', '', '', '', '', totalUnit, totalRevenue].join('\t')
-        : ['', 'TOTAL', '', '', '', '', '', '', '', totalTarif].join('\t'),
+        : ['', 'TOTAL', '', '', '', '', '', '', '', '', totalTarif, '', ''].join('\t'),
     ].join('\n')
     try {
       await navigator.clipboard.writeText(tsv)
@@ -349,18 +358,19 @@ export default function ReportSheet() {
                 ) : matrix.map((r, idx) => (
                   <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/60' : ''}>
                     {r.map((cell, ci) => {
-                      // Kolom Foto (index 9 di VehRow) — render sebagai thumbnail
-                      if (view === 'vehicle' && ci === 9) {
+                      // Kolom Foto (index 11 di VehRow) — render sebagai thumbnail
+                      if (view === 'vehicle' && ci === 11) {
                         const fotoPath = cell as string | null
-                        const noTrip = r[0] as string
+                        const noTrip = r[1] as string
+                        const unitLabel = r[6] as string
                         return (
                           <td key={ci} className="px-3 py-2 border-b border-slate-100 text-center">
-                            <ThumbnailCell foto_path={fotoPath} no_trip={noTrip} />
+                            <ThumbnailCell foto_path={fotoPath} no_trip={noTrip} label={unitLabel} />
                           </td>
                         )
                       }
-                      // Kolom Lokasi (index 10 di VehRow) — render sebagai tautan maps
-                      if (view === 'vehicle' && ci === 10) {
+                      // Kolom Lokasi (index 12 di VehRow) — render sebagai tautan maps
+                      if (view === 'vehicle' && ci === 12) {
                         const coords = cell as { lat: string; lng: string; gmaps: string } | null
                         if (!coords) return <td key={ci} className="px-3 py-2 border-b border-slate-100 text-slate-300 italic text-[11px]">-</td>
                         return (
@@ -383,7 +393,7 @@ export default function ReportSheet() {
                           ci === 0 ? 'text-slate-400 tabular-nums'
                           : typeof cell === 'number' ? 'text-right tabular-nums' : ''
                         } ${ci === 1 ? 'font-mono font-semibold text-slate-700' : 'text-slate-700'}`}>
-                          {typeof cell === 'number' && ci > 0 && (view === 'trip' ? ci === 10 : ci === 8)
+                          {typeof cell === 'number' && ci > 0 && ci === 10
                             ? fmtRp(cell)
                             : typeof cell === 'string' || typeof cell === 'number'
                               ? cell

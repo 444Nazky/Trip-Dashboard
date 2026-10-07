@@ -74,6 +74,27 @@ export interface ReportTrip {
   vehicles: ReportVehicle[]
 }
 
+/**
+ * Label urutan dokumentasi PER JENIS kendaraan pada satu trip — contoh:
+ *   [Truk Besar, Truk Besar, Mobil, Motor] → "Truk 1", "Truk 2", "Mobil 1", "Motor 1"
+ * Dipakai di caption foto & kolom Unit supaya foto truk 1 tidak tertukar
+ * dengan truk 2 di output dokumentasi admin.
+ */
+export function vehicleUnitLabel(
+  vehicles: ReportVehicle[],
+  vehicle: ReportVehicle | undefined,
+): string {
+  if (!vehicle) return '-'
+  const idx = Math.max(0, vehicles.findIndex(x => x.id === vehicle.id))
+  const type = (vehicle.vehicle_type || 'Kendaraan').trim()
+  const key = type.toLowerCase()
+  let n = 0
+  for (let i = 0; i <= idx; i++) {
+    if ((vehicles[i]?.vehicle_type ?? '').trim().toLowerCase() === key) n++
+  }
+  return `${type.replace(/^Truck/i, 'Truk')} ${n}`
+}
+
 /** Filter laporan (golongan & jenis kendaraan dari master tarif). */
 export interface ReportFilters {
   golongan?: string

@@ -1,6 +1,6 @@
 import { Fragment, useState, useEffect } from 'react'
 import { Camera, ChevronRight, Download, ExternalLink, Eye, EyeOff, Table2 } from 'lucide-react'
-import { fetchTrips, fetchTripReports, fetchReportFilters, fetchReportRecap, formatReportDateTime, dayKeyWib, type BackendTrip, type ReportTrip, type ReportFilters, type ReportRecapRow } from '../../../services/trips'
+import { fetchTrips, fetchTripReports, fetchReportFilters, fetchReportRecap, formatReportDateTime, dayKeyWib, vehicleUnitLabel, type BackendTrip, type ReportTrip, type ReportFilters, type ReportRecapRow } from '../../../services/trips'
 import { downloadXlsx } from '../../../services/xlsx'
 import { CurrencyDisplay, useCurrencyReveal } from '../components/CurrencyDisplay'
 import { PhotoViewer, resolvePhotoUrl } from '../components/PhotoViewer'
@@ -11,7 +11,8 @@ function vehiclePhotoCaption(trip: ReportTrip, vehicle: ReportTrip['vehicles'][n
     typeof vehicle.latitude === 'number' && typeof vehicle.longitude === 'number'
       ? `${vehicle.latitude.toFixed(5)}, ${vehicle.longitude.toFixed(5)}` : '',
   ].filter(Boolean).join(' · ')
-  return `${trip.no_trip} · ${vehicle.no_polisi} · ${vehicle.vehicle_type} · ${vehicle.golongan}${metadata ? ` · ${metadata}` : ''}`
+  const unit = vehicleUnitLabel(trip.vehicles, vehicle)
+  return `${trip.no_trip} · ${unit} · ${vehicle.no_polisi} · ${vehicle.vehicle_type} · ${vehicle.golongan}${metadata ? ` · ${metadata}` : ''}`
 }
 
 interface ReportsTabProps {
@@ -484,18 +485,23 @@ export function ReportsTab({ serverState, serverTrips, onServerTripsChange, show
                                 <tr key={`${v.no_polisi}-${i}`}>
                                   <td className="p-3">
                                     {v.foto_path ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => setViewingPhotos([{
-                                          id: `vehicle-${v.id}`,
-                                          url: v.foto_path!,
-                                          caption: vehiclePhotoCaption(t, v),
-                                        }])}
-                                        className="block w-16 h-12 sm:w-20 sm:h-14 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200 hover:ring-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        aria-label={`Lihat foto kendaraan ${v.no_polisi}`}
-                                      >
-                                        <img src={resolvePhotoUrl(v.foto_path, baseUrl)} alt={`Kendaraan ${v.no_polisi}`} className="w-full h-full object-cover" />
-                                      </button>
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => setViewingPhotos([{
+                                            id: `vehicle-${v.id}`,
+                                            url: v.foto_path!,
+                                            caption: vehiclePhotoCaption(t, v),
+                                          }])}
+                                          className="block w-16 h-12 sm:w-20 sm:h-14 overflow-hidden rounded-lg bg-slate-100 ring-1 ring-slate-200 hover:ring-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          aria-label={`Lihat foto kendaraan ${v.no_polisi}`}
+                                        >
+                                          <img src={resolvePhotoUrl(v.foto_path, baseUrl)} alt={`Kendaraan ${v.no_polisi}`} className="w-full h-full object-cover" />
+                                        </button>
+                                        <span className="block mt-1 text-[9px] font-black uppercase text-slate-500">
+                                          {vehicleUnitLabel(t.vehicles, v)}
+                                        </span>
+                                      </>
                                     ) : <span className="text-[10px] text-slate-400">Tidak ada foto</span>}
                                   </td>
                                   <td className="p-3 font-mono font-bold">{v.no_polisi}</td>
